@@ -109,7 +109,10 @@ public class RFShowControlRF24Adapter {
 	
 			// Enables the W_TX_PAYLOAD_NOACK command
 			rf24.enableWritePayloadNoAckCommand();
-	
+
+			// Enable AutoAck on all pipes
+			rf24.enableAutoAcknowledgmentOnAllPipes();
+			
 			// Reset current status and flush buffers
 			// Notice reset and flush is the last thing we do
 			rf24.resetAllInterrupts();

@@ -127,10 +127,10 @@ public class RFShowControlController {
 		else if (startChannelNumber < 1 || startChannelNumber > channelValues.length) {
 			throw new IllegalArgumentException("startChannelNumber must be in range [1-" + channelValues.length + "]");
 		}
-		else if (startChannelNumber > channelValues.length - newChannelValues.length) {
+		else if ((startChannelNumber - 1) > (channelValues.length - newChannelValues.length)) {
 			throw new IllegalArgumentException("startChannelNumber + newChannelValues.length must not exceed " + channelValues.length);
 		}
-		System.arraycopy(newChannelValues, startChannelNumber - 1, channelValues, startChannelNumber - 1, newChannelValues.length);
+		System.arraycopy(newChannelValues, 0, channelValues, startChannelNumber - 1, newChannelValues.length);
 		return this;
 	}
 
