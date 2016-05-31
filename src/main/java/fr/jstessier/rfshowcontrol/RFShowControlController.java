@@ -1,6 +1,7 @@
 package fr.jstessier.rfshowcontrol;
 
 public interface RFShowControlController {
+
 	/**
 	 *
 	 * @param rfChannel
