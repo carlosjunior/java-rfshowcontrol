@@ -24,7 +24,7 @@ public class RFShowControlMain {
 			throw new RFShowControlException("An error occured during RF24 Hardware instanciation", e);
 		}
 
-		final RFShowControlController controller = new RFShowControlController(rf24Hardware, 6);
+		final RFShowControlController controller = new RFShowControlControllerImpl(rf24Hardware, 6);
 		controller.start(
 				(byte) 76, 
 				new byte[] { (byte) 0xD2, (byte) 0xF2, (byte) 0xF2, (byte) 0xF2, (byte) 0xF2 },

@@ -1,5 +1,8 @@
 /target/
+/bin/
 /.settings/
 /.classpath
 /.project
 /dependency-reduced-pom.xml
+/rfshowcontrol.iml
+/.idea/

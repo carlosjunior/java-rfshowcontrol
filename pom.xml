@@ -6,7 +6,7 @@
 	<groupId>fr.jstessier.hardware</groupId>
 	<artifactId>rfshowcontrol</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-  
+
 	<dependencies>
 		<dependency>
 			<groupId>fr.jstessier.hardware</groupId>
