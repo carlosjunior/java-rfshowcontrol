@@ -22,6 +22,14 @@ public interface RFShowControlController {
 	RFShowControlController resetChannelValues() throws RFShowControlException;
 
 	/**
+	 * Reset all channels to 0 and flush values.
+	 *
+	 * @return	The current RFShowControlControllerImpl instance.
+	 * @throws RFShowControlException	In case of communication error with RF Module.
+	 */
+	RFShowControlController resetAndFlushChannelValues() throws RFShowControlException;
+
+	/**
 	 * Return the channel values.
 	 * @return	The channel values.
 	 */
@@ -33,7 +41,7 @@ public interface RFShowControlController {
 	 * @return	The current RFShowControlControllerImpl instance.
 	 * @throws RFShowControlException
 	 */
-	RFShowControlController sendChannelValues() throws RFShowControlException;
+	RFShowControlController flushChannelValues() throws RFShowControlException;
 
 	/**
 	 *
@@ -68,6 +76,6 @@ public interface RFShowControlController {
 	 * @return	The current RFShowControlControllerImpl instance.
 	 * @throws RFShowControlException
 	 */
-	RFShowControlController updateAndSendChannelValues(byte[] newChannelValues) throws RFShowControlException;
+	RFShowControlController updateAndFlushChannelValues(byte[] newChannelValues) throws RFShowControlException;
 
 }

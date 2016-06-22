@@ -19,20 +19,32 @@ package fr.jstessier.rfshowcontrol;
  * along with rfshowcontrol. If not, see <http://www.gnu.org/licenses/lgpl-3.0.html>.
  */
 
-import java.util.Arrays;
-
 import fr.jstessier.rf24.hardware.RF24Hardware;
 import fr.jstessier.rfshowcontrol.RFShowControlRF24Adapter.Mode;
 
+import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class RFShowControlControllerImpl implements RFShowControlController {
+
+    private static final int SEND_CHANNEL_VALUES_PERIOD_MS = 500;
 
 	private final RFShowControlRF24Adapter rf24;
 
-	private final byte[] channelValues;
+	private final byte[] channelTempValues;
+
+	private byte[] channelActiveValues;
+
+    private final Object synchroTempValues = new Object();
+
+    private final Object synchroSendValues = new Object();
+
+    private final Timer timer = new Timer(true);
 
 	/**
 	 * Constructor.
-	 * 
+	 *
 	 * @param rf24Hardware
 	 * @throws RFShowControlException
 	 */
@@ -42,79 +54,125 @@ public class RFShowControlControllerImpl implements RFShowControlController {
 
 	/**
 	 * Constructor.
-	 * 
+	 *
 	 * @param rf24Hardware
 	 * @param numberOfChannel
 	 * @throws RFShowControlException
 	 */
 	public RFShowControlControllerImpl(final RF24Hardware rf24Hardware, final int numberOfChannel) throws RFShowControlException {
 		rf24 = new RFShowControlRF24Adapter(rf24Hardware, numberOfChannel);
-		channelValues = new byte[numberOfChannel];
+		channelTempValues = new byte[numberOfChannel];
+		channelActiveValues = new byte[numberOfChannel];
 	}
 
 	@Override
 	public RFShowControlController start(final byte rfChannel, final byte[] pipeAddress,
-										 final Mode mode) throws RFShowControlException {
+                                         final Mode mode) throws RFShowControlException {
 		rf24.configure(rfChannel, pipeAddress, mode);
-		rf24.sendChannelValues(channelValues);
+        synchronized (synchroTempValues) {
+            Arrays.fill(channelTempValues, (byte) 0);
+            flushChannelValues();
+        }
+        // Send channelValue every 500ms
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    sendChannelValues();
+                } catch (RFShowControlException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, 0, SEND_CHANNEL_VALUES_PERIOD_MS);
 		return this;
 	}
 
+
+    @Override
+    public RFShowControlController resetChannelValues() throws RFShowControlException {
+        synchronized (synchroTempValues) {
+            Arrays.fill(channelTempValues, (byte) 0);
+        }
+        return this;
+    }
+
 	@Override
-	public RFShowControlController resetChannelValues() throws RFShowControlException {
-		Arrays.fill(channelValues, (byte) 0);
-		rf24.sendChannelValues(channelValues);
+	public RFShowControlController resetAndFlushChannelValues() throws RFShowControlException {
+        synchronized (synchroTempValues) {
+            Arrays.fill(channelTempValues, (byte) 0);
+            flushChannelValues();
+        }
 		return this;
 	}
 
 	@Override
 	public byte[] getChannelValues() {
-		return Arrays.copyOf(channelValues, channelValues.length);
+        synchronized (synchroTempValues) {
+            return Arrays.copyOf(channelTempValues, channelTempValues.length);
+        }
 	}
 
-	@Override
-	public RFShowControlController sendChannelValues() throws RFShowControlException {
-		rf24.sendChannelValues(channelValues);
+	private RFShowControlController sendChannelValues() throws RFShowControlException {
+        synchronized (synchroSendValues) {
+            rf24.sendChannelValues(channelActiveValues);
+        }
 		return this;
 	}
 
+    @Override
+    public RFShowControlController flushChannelValues() throws RFShowControlException {
+        synchronized (synchroTempValues) {
+            channelActiveValues = Arrays.copyOf(channelTempValues, channelTempValues.length);
+        }
+        sendChannelValues();
+        return this;
+    }
+
 	@Override
 	public RFShowControlController updateChannelValue(byte newChannelValue, int channelNumber) {
-		if (channelNumber < 1 || channelNumber > channelValues.length) {
-			throw new IllegalArgumentException("channelNumber must be in range [1-" + channelValues.length + "]");
-		}
-		channelValues[channelNumber - 1] = newChannelValue;
+        synchronized (synchroTempValues) {
+            if (channelNumber < 1 || channelNumber > channelTempValues.length) {
+                throw new IllegalArgumentException("channelNumber must be in range [1-" + channelTempValues.length + "]");
+            }
+            channelTempValues[channelNumber - 1] = newChannelValue;
+        }
 		return this;
 	}
 
 	@Override
 	public RFShowControlController updateChannelValues(byte[] newChannelValues, int startChannelNumber) {
-		if (newChannelValues == null || newChannelValues.length == 0) {
-			return this;
-		}
-		else if (startChannelNumber < 1 || startChannelNumber > channelValues.length) {
-			throw new IllegalArgumentException("startChannelNumber must be in range [1-" + channelValues.length + "]");
-		}
-		else if ((startChannelNumber - 1) > (channelValues.length - newChannelValues.length)) {
-			throw new IllegalArgumentException("startChannelNumber + newChannelValues.length must not exceed " + channelValues.length);
-		}
-		System.arraycopy(newChannelValues, 0, channelValues, startChannelNumber - 1, newChannelValues.length);
+        synchronized (synchroTempValues) {
+            if (newChannelValues == null || newChannelValues.length == 0) {
+                return this;
+            }
+            else if (startChannelNumber < 1 || startChannelNumber > channelTempValues.length) {
+                throw new IllegalArgumentException("startChannelNumber must be in range [1-" + channelTempValues.length + "]");
+            }
+            else if ((startChannelNumber - 1) > (channelTempValues.length - newChannelValues.length)) {
+                throw new IllegalArgumentException("startChannelNumber + newChannelValues.length must not exceed " + channelTempValues.length);
+            }
+            System.arraycopy(newChannelValues, 0, channelTempValues, startChannelNumber - 1, newChannelValues.length);
+        }
 		return this;
 	}
 
 	@Override
 	public RFShowControlController updateChannelValues(byte[] newChannelValues) {
-		if (newChannelValues.length != channelValues.length) {
-			throw new IllegalArgumentException("newChannelValues length must be equal to " + channelValues.length);
-		}
-		System.arraycopy(newChannelValues, 0, channelValues, 0, channelValues.length);
+        synchronized (synchroTempValues) {
+            if (newChannelValues.length != channelTempValues.length) {
+                throw new IllegalArgumentException("newChannelValues length must be equal to " + channelTempValues.length);
+            }
+            System.arraycopy(newChannelValues, 0, channelTempValues, 0, newChannelValues.length);
+        }
 		return this;
 	}
 
 	@Override
-	public RFShowControlController updateAndSendChannelValues(byte[] newChannelValues) throws RFShowControlException {
-		updateChannelValues(newChannelValues);
-		sendChannelValues();
+	public RFShowControlController updateAndFlushChannelValues(byte[] newChannelValues) throws RFShowControlException {
+        synchronized (synchroTempValues) {
+            updateChannelValues(newChannelValues);
+            flushChannelValues();
+        }
 		return this;
 	}
 
